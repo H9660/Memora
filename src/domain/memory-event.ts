@@ -30,15 +30,31 @@ export type NewMemoryInput = {
   note: string;
   capturedAt: Date;
   location?: MemoryLocation & { capturedAt: string };
+  photo?: { uri: string; capturedAt: string };
+};
+
+export type MemoryEdits = {
+  note: string;
+  removeLocation?: boolean;
+  removePhoto?: boolean;
 };
 
 export class MemoryValidationError extends Error {}
 
-export function createMemoryEvent(input: NewMemoryInput): MemoryEvent {
-  const note = input.note.trim();
-  if (note.length === 0) {
+function validateNote(note: string): string {
+  const trimmed = note.trim();
+  if (trimmed.length === 0) {
     throw new MemoryValidationError('Write a short note before saving.');
   }
+  return trimmed;
+}
+
+export function getPhotoUri(event: MemoryEvent): string | undefined {
+  return event.evidence.find((item) => item.type === 'PHOTO')?.payloadRef;
+}
+
+export function createMemoryEvent(input: NewMemoryInput): MemoryEvent {
+  const note = validateNote(input.note);
 
   const capturedAt = input.capturedAt.toISOString();
   const now = new Date().toISOString();
@@ -64,6 +80,16 @@ export function createMemoryEvent(input: NewMemoryInput): MemoryEvent {
     });
   }
 
+  if (input.photo) {
+    evidence.push({
+      id: Crypto.randomUUID(),
+      type: 'PHOTO',
+      capturedAt: input.photo.capturedAt,
+      sourceDescription: 'Photo taken with your camera',
+      payloadRef: input.photo.uri,
+    });
+  }
+
   return {
     id: Crypto.randomUUID(),
     capturedAt,
@@ -72,5 +98,24 @@ export function createMemoryEvent(input: NewMemoryInput): MemoryEvent {
     evidence,
     createdAt: now,
     updatedAt: now,
+  };
+}
+
+// Applies the user's corrections. Removed evidence is dropped entirely rather
+// than hidden, so it no longer exists in the record.
+export function applyMemoryEdits(event: MemoryEvent, edits: MemoryEdits): MemoryEvent {
+  const note = validateNote(edits.note);
+  const evidence = event.evidence.filter(
+    (item) =>
+      !(edits.removeLocation && item.type === 'LOCATION') &&
+      !(edits.removePhoto && item.type === 'PHOTO'),
+  );
+
+  return {
+    ...event,
+    note,
+    location: edits.removeLocation ? undefined : event.location,
+    evidence,
+    updatedAt: new Date().toISOString(),
   };
 }

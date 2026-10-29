@@ -34,7 +34,21 @@
           "imageWidth": 76
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Memora saves where you were when you capture a memory. This is optional."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Memora lets you attach a photo to a memory. This is optional.",
+          "photosPermission": "Memora lets you attach a photo to a memory. This is optional.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

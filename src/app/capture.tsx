@@ -1,7 +1,15 @@
-import { StyleSheet, Text, View, Pressable, TextInput } from "react-native";
+import { StyleSheet, Text, View, Pressable, TextInput, ScrollView } from "react-native";
+import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { getCurrentLocation, LocationData } from "@/services/location";
+import {
+  CameraPermissionError,
+  capturePhoto,
+  deletePhoto,
+  persistPhoto,
+  PhotoData,
+} from "@/services/photo";
 import { createMemoryEvent, MemoryValidationError } from "@/domain/memory-event";
 import { useMemoryRepository } from "@/hooks/use-memory-repository";
 
@@ -11,6 +19,8 @@ export default function CaptureScreen() {
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationStatus, setLocationStatus] = useState("Detecting...");
   const [note, setNote] = useState("");
+  const [photo, setPhoto] = useState<PhotoData | null>(null);
+  const [photoMessage, setPhotoMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,19 +54,49 @@ export default function CaptureScreen() {
     };
   }, []);
 
+  async function handleTakePhoto() {
+    setPhotoMessage(null);
+
+    try {
+      const result = await capturePhoto();
+      if (result) {
+        setPhoto(result);
+      }
+    } catch (e) {
+      setPhotoMessage(
+        e instanceof CameraPermissionError
+          ? "Camera permission denied (you can still save without a photo)"
+          : "Couldn't open the camera.",
+      );
+    }
+  }
+
   async function handleSave() {
     setError(null);
     setSaving(true);
 
+    let savedPhotoUri: string | undefined;
     try {
+      // Validate before copying the photo, so a rejected note leaves no file behind.
+      createMemoryEvent({ note, capturedAt });
+
+      const savedPhoto = photo
+        ? { uri: await persistPhoto(photo.uri), capturedAt: photo.capturedAt }
+        : undefined;
+      savedPhotoUri = savedPhoto?.uri;
+
       const event = createMemoryEvent({
         note,
         capturedAt,
         location: location ?? undefined,
+        photo: savedPhoto,
       });
       await repository.create(event);
       router.back();
     } catch (e) {
+      if (savedPhotoUri) {
+        deletePhoto(savedPhotoUri);
+      }
       setError(
         e instanceof MemoryValidationError
           ? e.message
@@ -67,7 +107,11 @@ export default function CaptureScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Pressable onPress={() => router.back()}>
         <Text style={styles.back}>← Back</Text>
       </Pressable>
@@ -91,10 +135,28 @@ export default function CaptureScreen() {
         </Text>
       </View>
 
-      <Pressable style={styles.photoButton}>
-        <Text style={styles.photoIcon}>📷</Text>
-        <Text style={styles.photoText}>Take a Photo</Text>
-      </Pressable>
+      {photo ? (
+        <View style={styles.photoPreview}>
+          <Image source={{ uri: photo.uri }} style={styles.photoImage} contentFit="cover" />
+
+          <View style={styles.photoActions}>
+            <Pressable onPress={handleTakePhoto}>
+              <Text style={styles.photoAction}>Retake</Text>
+            </Pressable>
+            <Pressable onPress={() => setPhoto(null)}>
+              <Text style={styles.photoAction}>Remove</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <Pressable style={styles.photoButton} onPress={handleTakePhoto}>
+          <Text style={styles.photoIcon}>📷</Text>
+          <Text style={styles.photoText}>Take a Photo</Text>
+          <Text style={styles.photoHint}>Optional</Text>
+        </Pressable>
+      )}
+
+      {photoMessage && <Text style={styles.hint}>{photoMessage}</Text>}
 
       <Text style={styles.label}>What is happening?</Text>
 
@@ -116,7 +178,7 @@ export default function CaptureScreen() {
       >
         <Text style={styles.saveText}>{saving ? "SAVING..." : "SAVE MEMORY"}</Text>
       </Pressable>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -124,6 +186,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F7F8FA",
+  },
+
+  content: {
     padding: 24,
     paddingTop: 60,
   },
@@ -182,6 +247,42 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 15,
     fontWeight: "600",
+  },
+
+  photoHint: {
+    marginTop: 2,
+    fontSize: 12,
+    color: "#777E89",
+  },
+
+  photoPreview: {
+    marginTop: 20,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+
+  photoImage: {
+    width: "100%",
+    aspectRatio: 4 / 3,
+  },
+
+  photoActions: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 12,
+  },
+
+  photoAction: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1B1D22",
+  },
+
+  hint: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#777E89",
   },
 
   label: {
