@@ -107,12 +107,15 @@ export class SqliteMemoryRepository implements MemoryRepository {
     return this.attachEvidence(rows);
   }
 
-  // Simple keyword match on the note and place name. Will move behind
-  // MemoryRetriever with full-text search in the search step.
+  // Case-insensitive keyword match on the note and place name. An empty query
+  // returns every memory. MemoryRetriever builds search features on top of this.
   async search(query: string): Promise<MemoryEvent[]> {
     const trimmed = query.trim();
     if (trimmed.length === 0) {
-      return this.listRecent();
+      const rows = await this.db.getAllAsync<MemoryRow>(
+        'SELECT * FROM memories ORDER BY captured_at DESC',
+      );
+      return this.attachEvidence(rows);
     }
     const pattern = `%${trimmed.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     const rows = await this.db.getAllAsync<MemoryRow>(
