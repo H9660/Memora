@@ -1,4 +1,5 @@
 import { SQLiteDatabase } from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { EvidenceItem, EvidenceType } from '@/domain/evidence';
 import { MemoryEvent } from '@/domain/memory-event';
@@ -76,7 +77,7 @@ export class SqliteMemoryRepository implements MemoryRepository {
   constructor(private readonly db: SQLiteDatabase) {}
 
   async create(event: MemoryEvent): Promise<void> {
-    await this.db.withExclusiveTransactionAsync(async (txn) => {
+    await this.transaction(async (txn) => {
       await txn.runAsync(
         `INSERT INTO memories
            (id, captured_at, event_time, note, latitude, longitude, place_name, created_at, updated_at)
@@ -125,7 +126,7 @@ export class SqliteMemoryRepository implements MemoryRepository {
   }
 
   async update(event: MemoryEvent): Promise<void> {
-    await this.db.withExclusiveTransactionAsync(async (txn) => {
+    await this.transaction(async (txn) => {
       const [id, ...rest] = memoryParams(event);
       await txn.runAsync(
         `UPDATE memories SET
@@ -144,6 +145,15 @@ export class SqliteMemoryRepository implements MemoryRepository {
   async delete(id: string): Promise<void> {
     // Evidence rows are removed by ON DELETE CASCADE.
     await this.db.runAsync('DELETE FROM memories WHERE id = ?', id);
+  }
+
+  // Exclusive transactions keep unrelated queries out, but aren't supported on web.
+  private async transaction(task: (txn: SQLiteDatabase) => Promise<void>): Promise<void> {
+    if (Platform.OS === 'web') {
+      await this.db.withTransactionAsync(() => task(this.db));
+    } else {
+      await this.db.withExclusiveTransactionAsync(task);
+    }
   }
 
   private async attachEvidence(rows: MemoryRow[]): Promise<MemoryEvent[]> {
