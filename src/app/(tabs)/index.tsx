@@ -1,28 +1,94 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
-import { router } from "expo-router";
+import { StyleSheet, Text, View, Pressable, SectionList } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+
+import { MemoryCard } from "@/components/memory-card";
+import { formatPlace, MemoryEvent } from "@/domain/memory-event";
+import { useMemoryRepository } from "@/hooks/use-memory-repository";
+import { getCurrentLocation } from "@/services/location";
+
+type DaySection = { title: string; data: MemoryEvent[] };
+
 export default function HomeScreen() {
+  const repository = useMemoryRepository();
+  const [sections, setSections] = useState<DaySection[] | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [locationStatus, setLocationStatus] = useState("Checking...");
+
+  // Reload whenever Home comes back into view, e.g. after saving a memory.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+
+      repository
+        .listRecent()
+        .then((memories) => {
+          if (!active) return;
+          setSections(groupByDay(memories));
+          setLoadError(false);
+        })
+        .catch(() => {
+          if (active) setLoadError(true);
+        });
+
+      // Don't prompt for permission here; Capture asks when it's needed.
+      getCurrentLocation({ requestPermission: false })
+        .then((result) => {
+          if (!active) return;
+          setLocationStatus(
+            result ? formatPlace(result) : "Added when you capture a memory",
+          );
+        })
+        .catch(() => {
+          if (active) setLocationStatus("Unavailable");
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [repository]),
+  );
+
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>MEMORA</Text>
+      <SectionList
+        style={styles.list}
+        sections={sections ?? []}
+        keyExtractor={(memory) => memory.id}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.logo}>MEMORA</Text>
 
-      <Text style={styles.subtitle}>Your personal memory companion</Text>
+            <Text style={styles.subtitle}>Your personal memory companion</Text>
 
-      <View style={styles.statusCard}>
-        <Text style={styles.statusTitle}>Current Context</Text>
+            <View style={styles.statusCard}>
+              <Text style={styles.statusTitle}>Current Context</Text>
 
-        <Text style={styles.statusText}>📍 Location: Detecting...</Text>
-        <Text style={styles.statusText}>🚶 Activity: Detecting...</Text>
-      </View>
+              <Text style={styles.statusText}>📍 Location: {locationStatus}</Text>
+            </View>
+          </>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionTitle}>{section.title.toUpperCase()}</Text>
+        )}
+        renderItem={({ item }) => <MemoryCard memory={item} />}
+        ListEmptyComponent={
+          sections === null && !loadError ? undefined : (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>
+                {loadError ? "Couldn't load your memories" : "No memories yet"}
+              </Text>
 
-      <Text style={styles.sectionTitle}>TODAY</Text>
-
-      <View style={styles.emptyCard}>
-        <Text style={styles.emptyTitle}>No memories yet</Text>
-
-        <Text style={styles.emptyText}>
-          Memories you capture will appear here.
-        </Text>
-      </View>
+              <Text style={styles.emptyText}>
+                {loadError
+                  ? "Please close and reopen Memora."
+                  : "Memories you capture will appear here."}
+              </Text>
+            </View>
+          )
+        }
+      />
 
       <Pressable style={styles.button} onPress={() => router.push("/capture")}>
         <Text style={styles.buttonText}>+ REMEMBER THIS</Text>
@@ -31,12 +97,44 @@ export default function HomeScreen() {
   );
 }
 
+function groupByDay(memories: MemoryEvent[]): DaySection[] {
+  const sections: DaySection[] = [];
+  for (const memory of memories) {
+    const title = dayLabel(new Date(memory.capturedAt));
+    const last = sections[sections.length - 1];
+    if (last?.title === title) {
+      last.data.push(memory);
+    } else {
+      sections.push({ title, data: [memory] });
+    }
+  }
+  return sections;
+}
+
+function dayLabel(date: Date): string {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
     paddingTop: 70,
     backgroundColor: "#F7F8FA",
+  },
+
+  list: {
+    flex: 1,
   },
 
   logo: {
@@ -53,6 +151,7 @@ const styles = StyleSheet.create({
 
   statusCard: {
     marginTop: 28,
+    marginBottom: 6,
     padding: 18,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
@@ -71,7 +170,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    marginTop: 30,
+    marginTop: 24,
     marginBottom: 12,
     fontSize: 13,
     fontWeight: "700",
@@ -80,6 +179,7 @@ const styles = StyleSheet.create({
   },
 
   emptyCard: {
+    marginTop: 24,
     padding: 20,
     borderRadius: 16,
     backgroundColor: "#FFFFFF",
@@ -96,7 +196,7 @@ const styles = StyleSheet.create({
   },
 
   button: {
-    marginTop: 24,
+    marginTop: 16,
     paddingVertical: 17,
     borderRadius: 14,
     backgroundColor: "#1B1D22",

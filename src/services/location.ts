@@ -7,10 +7,15 @@ export type LocationData = {
   capturedAt: string; // ISO-8601 time of the GPS fix
 };
 
-// Returns null when permission is denied. Throws when location is unavailable
+// Returns null when permission is denied (or not yet granted, when
+// requestPermission is false). Throws when location is unavailable
 // (e.g. location services turned off).
-export async function getCurrentLocation(): Promise<LocationData | null> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
+export async function getCurrentLocation({
+  requestPermission = true,
+}: { requestPermission?: boolean } = {}): Promise<LocationData | null> {
+  const { status } = requestPermission
+    ? await Location.requestForegroundPermissionsAsync()
+    : await Location.getForegroundPermissionsAsync();
 
   if (status !== 'granted') {
     return null;

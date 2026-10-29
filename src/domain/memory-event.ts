@@ -8,6 +8,13 @@ export type MemoryLocation = {
   placeName?: string | null;
 };
 
+export function formatPlace(location: MemoryLocation): string {
+  return (
+    location.placeName ??
+    `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
+  );
+}
+
 export type MemoryEvent = {
   id: string;
   capturedAt: string;
