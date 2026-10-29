@@ -4,8 +4,11 @@ export type LocationData = {
   latitude: number;
   longitude: number;
   placeName: string | null;
+  capturedAt: string; // ISO-8601 time of the GPS fix
 };
 
+// Returns null when permission is denied. Throws when location is unavailable
+// (e.g. location services turned off).
 export async function getCurrentLocation(): Promise<LocationData | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
 
@@ -45,5 +48,6 @@ export async function getCurrentLocation(): Promise<LocationData | null> {
     latitude,
     longitude,
     placeName,
+    capturedAt: new Date(location.timestamp).toISOString(),
   };
 }

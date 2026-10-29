@@ -2,28 +2,70 @@ import { StyleSheet, Text, View, Pressable, TextInput } from "react-native";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { getCurrentLocation, LocationData } from "@/services/location";
+import { createMemoryEvent, MemoryValidationError } from "@/domain/memory-event";
+import { useMemoryRepository } from "@/hooks/use-memory-repository";
 
 export default function CaptureScreen() {
+  const repository = useMemoryRepository();
+  const [capturedAt] = useState(() => new Date());
   const [location, setLocation] = useState<LocationData | null>(null);
   const [locationStatus, setLocationStatus] = useState("Detecting...");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadLocation() {
-      const result = await getCurrentLocation();
+    let active = true;
 
-      if (result) {
-        setLocation(result);
-        setLocationStatus(
-          result.placeName ??
-            `${result.latitude.toFixed(5)}, ${result.longitude.toFixed(5)}`,
-        );
-      } else {
-        setLocationStatus("Permission denied");
+    async function loadLocation() {
+      try {
+        const result = await getCurrentLocation();
+        if (!active) return;
+
+        if (result) {
+          setLocation(result);
+          setLocationStatus(
+            result.placeName ??
+              `${result.latitude.toFixed(5)}, ${result.longitude.toFixed(5)}`,
+          );
+        } else {
+          setLocationStatus("Permission denied (you can still save)");
+        }
+      } catch {
+        if (active) {
+          setLocationStatus("Unavailable — is location turned on?");
+        }
       }
     }
 
     loadLocation();
+    return () => {
+      active = false;
+    };
   }, []);
+
+  async function handleSave() {
+    setError(null);
+    setSaving(true);
+
+    try {
+      const event = createMemoryEvent({
+        note,
+        capturedAt,
+        location: location ?? undefined,
+      });
+      await repository.create(event);
+      router.back();
+    } catch (e) {
+      setError(
+        e instanceof MemoryValidationError
+          ? e.message
+          : "Couldn't save this memory. Please try again.",
+      );
+      setSaving(false);
+    }
+  }
+
   return (
     <View style={styles.container}>
       <Pressable onPress={() => router.back()}>
@@ -40,8 +82,13 @@ export default function CaptureScreen() {
         <Text style={styles.contextTitle}>Current Context</Text>
 
         <Text style={styles.contextText}>📍 Location: {locationStatus}</Text>
-        <Text style={styles.contextText}>🚶 Activity: Detecting...</Text>
-        <Text style={styles.contextText}>🕐 Time: Current time</Text>
+        <Text style={styles.contextText}>
+          🕐 Time:{" "}
+          {capturedAt.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })}
+        </Text>
       </View>
 
       <Pressable style={styles.photoButton}>
@@ -56,10 +103,18 @@ export default function CaptureScreen() {
         placeholder="Describe this moment..."
         placeholderTextColor="#9CA3AF"
         multiline
+        value={note}
+        onChangeText={setNote}
       />
 
-      <Pressable style={styles.saveButton} onPress={() => router.back()}>
-        <Text style={styles.saveText}>SAVE MEMORY</Text>
+      {error && <Text style={styles.error}>{error}</Text>}
+
+      <Pressable
+        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+        onPress={handleSave}
+        disabled={saving}
+      >
+        <Text style={styles.saveText}>{saving ? "SAVING..." : "SAVE MEMORY"}</Text>
       </Pressable>
     </View>
   );
@@ -145,12 +200,22 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
 
+  error: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#B42318",
+  },
+
   saveButton: {
     marginTop: 20,
     paddingVertical: 17,
     borderRadius: 14,
     backgroundColor: "#1B1D22",
     alignItems: "center",
+  },
+
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
 
   saveText: {
