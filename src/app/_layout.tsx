@@ -1,10 +1,10 @@
 import {
   DarkTheme,
   DefaultTheme,
+  Stack,
   ThemeProvider,
 } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { Stack } from 'expo-router';
 import { SQLiteProvider } from 'expo-sqlite';
 import { useColorScheme } from 'react-native';
 
