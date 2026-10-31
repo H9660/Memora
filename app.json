@@ -21,7 +21,7 @@
       "package": "com.anonymous.Memora"
     },
     "web": {
-      "output": "server",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
