@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 export type LocationData = {
   latitude: number;
@@ -27,7 +28,20 @@ export async function getCurrentLocation({
 
   const { latitude, longitude } = location.coords;
 
-  let placeName: string | null = null;
+  return {
+    latitude,
+    longitude,
+    placeName: await lookUpPlaceName(latitude, longitude),
+    capturedAt: new Date(location.timestamp).toISOString(),
+  };
+}
+
+async function lookUpPlaceName(latitude: number, longitude: number): Promise<string | null> {
+  // Reverse geocoding is Android/iOS only; on web it just warns and returns
+  // nothing, so callers show coordinates instead.
+  if (Platform.OS === 'web') {
+    return null;
+  }
 
   try {
     const addresses = await Location.reverseGeocodeAsync({
@@ -38,21 +52,17 @@ export async function getCurrentLocation({
     if (addresses.length > 0) {
       const address = addresses[0];
 
-      placeName =
+      return (
         address.name ||
         address.street ||
         address.district ||
         address.city ||
-        null;
+        null
+      );
     }
   } catch (error) {
     console.log('Reverse geocoding failed:', error);
   }
 
-  return {
-    latitude,
-    longitude,
-    placeName,
-    capturedAt: new Date(location.timestamp).toISOString(),
-  };
+  return null;
 }
