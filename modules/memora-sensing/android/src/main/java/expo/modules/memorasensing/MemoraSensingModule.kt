@@ -43,6 +43,7 @@ class MemoraSensingModule : Module() {
         "startedAt" to CaptureService.startedAt?.toDouble(),
         "counts" to store.countsSince(sinceMs.toLong()),
         "lastSampleAt" to store.latestTimes().mapValues { it.value.toDouble() },
+        "latestPhotoUri" to store.latestPayload("photo")?.optString("uri"),
       )
     }
   }

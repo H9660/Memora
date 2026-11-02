@@ -29,6 +29,7 @@ export function getCaptureStatus(): CaptureStatus {
       startedAt: null,
       counts: {},
       lastSampleAt: {},
+      latestPhotoUri: null,
     }
   );
 }
@@ -45,8 +46,9 @@ export async function startCapture(): Promise<void> {
     throw new CapturePermissionError('Location permission is needed for background capture.');
   }
 
-  // Android 13+ hides the capture notification without this permission.
-  // Capture still works if it is denied, so the result is not checked.
+  // Optional permissions: capture still runs if they are denied, just without
+  // photos, or with the notification hidden (Android 13+).
+  await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
   if (Platform.OS === 'android' && Platform.Version >= 33) {
     await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }

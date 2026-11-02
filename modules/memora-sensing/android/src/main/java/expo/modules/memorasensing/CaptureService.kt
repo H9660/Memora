@@ -1,22 +1,23 @@
 package expo.modules.memorasensing
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
-import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.LifecycleService
 
 private const val TAG = "MemoraCapture"
 private const val CHANNEL_ID = "memora_capture"
@@ -26,29 +27,28 @@ private const val ACTION_STOP = "expo.modules.memorasensing.STOP"
 // Always-on capture runs inside this foreground service so Android keeps it
 // alive with the screen off. Its notification cannot be hidden: it is the
 // user's constant reminder that Memora is capturing, and its Stop button.
-class CaptureService : Service() {
+// A LifecycleService so CameraX can bind the camera to it.
+class CaptureService : LifecycleService() {
   private var worker: HandlerThread? = null
   private var workerHandler: Handler? = null
   private var wakeLock: PowerManager.WakeLock? = null
+  // Set on the worker thread, read by PhotoSampler on the main thread.
+  @Volatile
   private var motion: MotionSampler? = null
   private var location: LocationSampler? = null
   private var battery: BatterySampler? = null
-
-  override fun onBind(intent: Intent?): IBinder? = null
+  private var photos: PhotoSampler? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    super.onStartCommand(intent, flags, startId)
+
     if (intent?.action == ACTION_STOP) {
       stopCapture()
       return START_NOT_STICKY
     }
 
     try {
-      ServiceCompat.startForeground(
-        this,
-        NOTIFICATION_ID,
-        buildNotification(),
-        ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION,
-      )
+      ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), foregroundTypes())
       if (!running) {
         startSampling()
         running = true
@@ -65,6 +65,19 @@ class CaptureService : Service() {
     // user, so don't ask to be recreated after being killed.
     return START_NOT_STICKY
   }
+
+  // Android only lets a foreground service use the camera if it was started
+  // with the camera type, which in turn requires the camera permission.
+  private fun foregroundTypes(): Int {
+    var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasCameraPermission()) {
+      types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+    }
+    return types
+  }
+
+  private fun hasCameraPermission() =
+    ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
   override fun onDestroy() {
     stopSampling()
@@ -100,9 +113,20 @@ class CaptureService : Service() {
         Log.e(TAG, "Could not start sensors", t)
       }
     }
+
+    // CameraX runs on the main thread. Without camera permission, capture
+    // continues without photos.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasCameraPermission()) {
+      photos = PhotoSampler(this, store) { motion?.lastMinuteMovement }.also { it.start() }
+    } else {
+      Log.w(TAG, "No camera permission; photos not taken")
+    }
   }
 
   private fun stopSampling() {
+    photos?.stop()
+    photos = null
+
     workerHandler?.post {
       motion?.stop()
       location?.stop()

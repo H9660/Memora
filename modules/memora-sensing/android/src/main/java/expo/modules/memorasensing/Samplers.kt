@@ -27,6 +27,12 @@ import kotlin.math.sqrt
 class MotionSampler(context: Context, private val store: CaptureStore) : SensorEventListener {
   private val sensorManager = context.getSystemService(SensorManager::class.java)
 
+  // Movement (sd of acceleration magnitude) in the last completed minute;
+  // read by PhotoSampler on another thread. null until a minute completes.
+  @Volatile
+  var lastMinuteMovement: Double? = null
+    private set
+
   private var windowStart = -1L
   private var count = 0
   private var sum = 0.0
@@ -68,6 +74,7 @@ class MotionSampler(context: Context, private val store: CaptureStore) : SensorE
     val mean = sum / count
     // Spread of acceleration magnitude: ~0 when still, grows with movement.
     val sd = sqrt(max(0.0, sumSquares / count - mean * mean))
+    lastMinuteMovement = sd
     store.insert(
       "motion",
       windowStart,

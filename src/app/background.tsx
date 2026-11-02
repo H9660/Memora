@@ -1,4 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 
@@ -15,6 +16,7 @@ const STREAMS: { stream: CaptureStream; label: string; every: string }[] = [
   { stream: "location", label: "📍 Location", every: "about every 2 min" },
   { stream: "motion", label: "🚶 Motion", every: "summary every minute" },
   { stream: "battery", label: "🔋 Battery", every: "every 5 min" },
+  { stream: "photo", label: "📷 Photos", every: "every 2 min when moving" },
 ];
 
 function formatAgo(ms: number | undefined): string {
@@ -121,6 +123,15 @@ export default function BackgroundCaptureScreen() {
                 </View>
               </View>
             ))}
+
+            {status.latestPhotoUri && (
+              <Image
+                source={{ uri: status.latestPhotoUri }}
+                style={styles.latestPhoto}
+                contentFit="cover"
+                accessibilityLabel="Latest automatic photo"
+              />
+            )}
           </View>
         </>
       ) : (
@@ -143,8 +154,10 @@ export default function BackgroundCaptureScreen() {
         <Text style={styles.cardText}>
           While capture is on, Memora records location, motion and battery level
           in the background, even with the screen off, and shows a notification.
-          Photos and sound labels are coming next. Sound will never be recorded
-          or kept — only labels like “speech” or “traffic”.
+          With the camera facing out of your pouch, it takes a photo every 2
+          minutes while you move (every 15 while still) and deletes dark ones.
+          Sound labels are coming next. Sound will never be recorded or kept —
+          only labels like “speech” or “traffic”.
         </Text>
         <Text style={styles.cardHint}>
           Stop any time here or from the notification.
@@ -268,6 +281,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     color: "#1B1D22",
+  },
+
+  latestPhoto: {
+    marginTop: 8,
+    width: "100%",
+    aspectRatio: 3 / 4,
+    borderRadius: 12,
   },
 
   disabled: {

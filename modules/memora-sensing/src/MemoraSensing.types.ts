@@ -1,4 +1,4 @@
-export type CaptureStream = 'location' | 'motion' | 'battery';
+export type CaptureStream = 'location' | 'motion' | 'battery' | 'photo';
 
 export type CaptureStatus = {
   running: boolean;
@@ -7,6 +7,7 @@ export type CaptureStatus = {
   counts: Partial<Record<CaptureStream, number>>;
   // Newest sample per stream, epoch milliseconds.
   lastSampleAt: Partial<Record<CaptureStream, number>>;
+  latestPhotoUri: string | null;
 };
 
 export type MemoraSensingModuleEvents = Record<string, never>;

@@ -67,6 +67,15 @@ class CaptureStore private constructor(context: Context) :
     return times
   }
 
+  fun latestPayload(stream: String): JSONObject? {
+    readableDatabase.rawQuery(
+      "SELECT payload FROM samples WHERE stream = ? ORDER BY t DESC LIMIT 1",
+      arrayOf(stream)
+    ).use { cursor ->
+      return if (cursor.moveToFirst()) JSONObject(cursor.getString(0)) else null
+    }
+  }
+
   companion object {
     const val DATABASE_NAME = "capture.db"
     private const val SCHEMA_VERSION = 1
