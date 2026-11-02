@@ -67,6 +67,27 @@ class CaptureStore private constructor(context: Context) :
     return times
   }
 
+  // All samples with fromMs <= t < toMs, oldest first. Payloads stay JSON
+  // strings; the app parses them.
+  fun samplesBetween(fromMs: Long, toMs: Long): List<Map<String, Any>> {
+    val samples = mutableListOf<Map<String, Any>>()
+    readableDatabase.rawQuery(
+      "SELECT stream, t, payload FROM samples WHERE t >= ? AND t < ? ORDER BY t",
+      arrayOf(fromMs.toString(), toMs.toString())
+    ).use { cursor ->
+      while (cursor.moveToNext()) {
+        samples.add(
+          mapOf(
+            "stream" to cursor.getString(0),
+            "t" to cursor.getLong(1).toDouble(),
+            "payload" to cursor.getString(2),
+          )
+        )
+      }
+    }
+    return samples
+  }
+
   fun latestPayload(stream: String): JSONObject? {
     readableDatabase.rawQuery(
       "SELECT payload FROM samples WHERE stream = ? ORDER BY t DESC LIMIT 1",

@@ -28,6 +28,7 @@ export default function RootLayout() {
           <Stack.Screen name="capture" />
           <Stack.Screen name="memory/[id]" />
           <Stack.Screen name="background" />
+          <Stack.Screen name="activity" />
         </Stack>
       </SQLiteProvider>
     </ThemeProvider>

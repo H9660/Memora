@@ -39,7 +39,7 @@ export async function getCurrentLocation({
   };
 }
 
-async function lookUpPlaceName(latitude: number, longitude: number): Promise<string | null> {
+export async function lookUpPlaceName(latitude: number, longitude: number): Promise<string | null> {
   // Reverse geocoding is Android/iOS only; on web it just warns and returns
   // nothing, so callers show coordinates instead.
   if (Platform.OS === 'web') {

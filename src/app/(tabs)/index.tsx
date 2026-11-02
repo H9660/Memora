@@ -76,6 +76,13 @@ export default function HomeScreen() {
                   <Text style={styles.statusLink}>  Manage ›</Text>
                 </Text>
               </Pressable>
+
+              <Pressable onPress={() => router.push("/activity")}>
+                <Text style={styles.statusText}>
+                  🗂 Captured activity
+                  <Text style={styles.statusLink}>  View ›</Text>
+                </Text>
+              </Pressable>
             </View>
           </>
         }

@@ -140,6 +140,10 @@ export default function BackgroundCaptureScreen() {
               />
             )}
           </View>
+
+          <Pressable style={styles.activityButton} onPress={() => router.push("/activity")}>
+            <Text style={styles.activityButtonText}>SEE ALL CAPTURED ACTIVITY</Text>
+          </Pressable>
         </>
       ) : (
         <View style={styles.card}>
@@ -289,6 +293,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     color: "#1B1D22",
+  },
+
+  activityButton: {
+    marginTop: 16,
+    paddingVertical: 17,
+    borderRadius: 14,
+    backgroundColor: "#1B1D22",
+    alignItems: "center",
+  },
+
+  activityButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
   latestPhoto: {

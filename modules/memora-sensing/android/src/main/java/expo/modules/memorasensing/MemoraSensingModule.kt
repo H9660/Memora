@@ -34,6 +34,11 @@ class MemoraSensingModule : Module() {
       CaptureService.stop(context)
     }
 
+    // Raw samples for the Captured Activity screen, oldest first.
+    AsyncFunction("getSamples") { fromMs: Double, toMs: Double ->
+      CaptureStore.get(context).samplesBetween(fromMs.toLong(), toMs.toLong())
+    }
+
     // counts: samples per stream taken at or after sinceMs.
     // lastSampleAt: newest sample per stream, any time.
     Function("getStatus") { sinceMs: Double ->

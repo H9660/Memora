@@ -12,4 +12,12 @@ export type CaptureStatus = {
   latestSoundLabels: string[];
 };
 
+// One row from the capture database. payload is a JSON string whose shape
+// depends on the stream.
+export type RawCaptureSample = {
+  stream: CaptureStream | 'photo_rejected';
+  t: number; // epoch milliseconds
+  payload: string;
+};
+
 export type MemoraSensingModuleEvents = Record<string, never>;

@@ -1,6 +1,8 @@
 import * as Location from 'expo-location';
 import { PermissionsAndroid, Platform } from 'react-native';
 
+import { DayActivity, startOfLocalDay, summarizeDay } from '@/domain/captured-activity';
+
 import MemoraSensing, { CaptureStatus } from '../../modules/memora-sensing';
 
 export type { CaptureStatus, CaptureStream } from '../../modules/memora-sensing';
@@ -20,11 +22,8 @@ export function getCaptureAvailability(): CaptureAvailability {
 
 // Counts cover today (since local midnight).
 export function getCaptureStatus(): CaptureStatus {
-  const midnight = new Date();
-  midnight.setHours(0, 0, 0, 0);
-
   return (
-    MemoraSensing?.getStatus(midnight.getTime()) ?? {
+    MemoraSensing?.getStatus(startOfLocalDay(new Date()).getTime()) ?? {
       running: false,
       startedAt: null,
       counts: {},
@@ -60,4 +59,14 @@ export async function startCapture(): Promise<void> {
 
 export function stopCapture(): void {
   MemoraSensing?.stopCapture();
+}
+
+// Everything captured on the given day (local midnight to midnight), by hour.
+export async function getCapturedDay(day: Date): Promise<DayActivity> {
+  const start = startOfLocalDay(day);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  const samples = MemoraSensing ? await MemoraSensing.getSamples(start.getTime(), end.getTime()) : [];
+  return summarizeDay(samples);
 }
