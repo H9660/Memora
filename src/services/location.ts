@@ -53,19 +53,27 @@ async function lookUpPlaceName(latitude: number, longitude: number): Promise<str
     });
 
     if (addresses.length > 0) {
-      const address = addresses[0];
-
-      return (
-        address.name ||
-        address.street ||
-        address.district ||
-        address.city ||
-        null
-      );
+      return describeAddress(addresses[0]);
     }
   } catch (error) {
     console.log('Reverse geocoding failed:', error);
   }
 
   return null;
+}
+
+// e.g. "Melbourne Central, Melbourne" or "8 Flinders St, Melbourne".
+// Android often puts only the house number in `name`, which on its own ("8")
+// isn't a useful place label.
+function describeAddress(address: Location.LocationGeocodedAddress): string | null {
+  const isHouseNumber = address.name !== null && /^\d+[a-zA-Z]?$/.test(address.name);
+  const name = address.name && !isHouseNumber ? address.name : null;
+  const streetLine = [address.streetNumber, address.street].filter(Boolean).join(' ');
+  const area = address.district || address.city;
+
+  const primary = name || streetLine || null;
+  if (primary && area && !primary.includes(area)) {
+    return `${primary}, ${area}`;
+  }
+  return primary || area || null;
 }
