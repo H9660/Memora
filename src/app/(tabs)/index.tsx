@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { MemoryCard } from "@/components/memory-card";
 import { formatPlace, MemoryEvent } from "@/domain/memory-event";
 import { useMemoryRepository } from "@/hooks/use-memory-repository";
+import { getCaptureStatus } from "@/services/background-capture";
 import { getCurrentLocation } from "@/services/location";
 
 type DaySection = { title: string; data: MemoryEvent[] };
@@ -14,11 +15,13 @@ export default function HomeScreen() {
   const [sections, setSections] = useState<DaySection[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [locationStatus, setLocationStatus] = useState("Checking...");
+  const [capturing, setCapturing] = useState(false);
 
   // Reload whenever Home comes back into view, e.g. after saving a memory.
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      setCapturing(getCaptureStatus().running);
 
       repository
         .listRecent()
@@ -66,6 +69,13 @@ export default function HomeScreen() {
               <Text style={styles.statusTitle}>Current Context</Text>
 
               <Text style={styles.statusText}>📍 Location: {locationStatus}</Text>
+
+              <Pressable onPress={() => router.push("/background")}>
+                <Text style={styles.statusText}>
+                  {capturing ? "🔴 Background capture: On" : "⚪ Background capture: Off"}
+                  <Text style={styles.statusLink}>  Manage ›</Text>
+                </Text>
+              </Pressable>
             </View>
           </>
         }
@@ -167,6 +177,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#555B66",
     marginTop: 6,
+  },
+
+  statusLink: {
+    fontWeight: "700",
+    color: "#1B1D22",
   },
 
   sectionTitle: {

@@ -27,6 +27,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="capture" />
           <Stack.Screen name="memory/[id]" />
+          <Stack.Screen name="background" />
         </Stack>
       </SQLiteProvider>
     </ThemeProvider>
