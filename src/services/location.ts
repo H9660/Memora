@@ -24,6 +24,9 @@ export async function getCurrentLocation({
 
   const location = await Location.getCurrentPositionAsync({
     accuracy: Location.Accuracy.Balanced,
+    // Only prompt to change location settings when the user is capturing,
+    // not when Home just reads the current context.
+    mayShowUserSettingsDialog: requestPermission,
   });
 
   const { latitude, longitude } = location.coords;
