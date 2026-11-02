@@ -4,11 +4,26 @@ import { useCallback, useState } from "react";
 
 import {
   CapturePermissionError,
+  CaptureStream,
   getCaptureAvailability,
   getCaptureStatus,
   startCapture,
   stopCapture,
 } from "@/services/background-capture";
+
+const STREAMS: { stream: CaptureStream; label: string; every: string }[] = [
+  { stream: "location", label: "📍 Location", every: "about every 2 min" },
+  { stream: "motion", label: "🚶 Motion", every: "summary every minute" },
+  { stream: "battery", label: "🔋 Battery", every: "every 5 min" },
+];
+
+function formatAgo(ms: number | undefined): string {
+  if (ms === undefined) return "never";
+  const minutes = Math.floor((Date.now() - ms) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  return new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
 
 export default function BackgroundCaptureScreen() {
   const availability = getCaptureAvailability();
@@ -89,6 +104,24 @@ export default function BackgroundCaptureScreen() {
           </Text>
 
           {message && <Text style={styles.error}>{message}</Text>}
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Today</Text>
+            {STREAMS.map(({ stream, label, every }) => (
+              <View key={stream} style={styles.streamRow}>
+                <View>
+                  <Text style={styles.cardText}>{label}</Text>
+                  <Text style={styles.cardHint}>{every}</Text>
+                </View>
+                <View style={styles.streamValue}>
+                  <Text style={styles.streamCount}>{status.counts[stream] ?? 0}</Text>
+                  <Text style={styles.cardHint}>
+                    {formatAgo(status.lastSampleAt[stream])}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </>
       ) : (
         <View style={styles.card}>
@@ -108,10 +141,10 @@ export default function BackgroundCaptureScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>What is captured</Text>
         <Text style={styles.cardText}>
-          The capture service runs with the screen off and shows a notification
-          while it is on. Location, motion, photos and sound labels are being
-          added step by step. Sound is never recorded or kept — only labels like
-          “speech” or “traffic”.
+          While capture is on, Memora records location, motion and battery level
+          in the background, even with the screen off, and shows a notification.
+          Photos and sound labels are coming next. Sound will never be recorded
+          or kept — only labels like “speech” or “traffic”.
         </Text>
         <Text style={styles.cardHint}>
           Stop any time here or from the notification.
@@ -218,6 +251,23 @@ const styles = StyleSheet.create({
   cardHint: {
     fontSize: 13,
     color: "#777E89",
+  },
+
+  streamRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+
+  streamValue: {
+    alignItems: "flex-end",
+  },
+
+  streamCount: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1B1D22",
   },
 
   disabled: {

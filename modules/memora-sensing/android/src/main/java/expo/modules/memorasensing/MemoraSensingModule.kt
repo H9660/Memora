@@ -34,10 +34,15 @@ class MemoraSensingModule : Module() {
       CaptureService.stop(context)
     }
 
-    Function("getStatus") {
+    // counts: samples per stream taken at or after sinceMs.
+    // lastSampleAt: newest sample per stream, any time.
+    Function("getStatus") { sinceMs: Double ->
+      val store = CaptureStore.get(context)
       mapOf(
         "running" to CaptureService.running,
         "startedAt" to CaptureService.startedAt?.toDouble(),
+        "counts" to store.countsSince(sinceMs.toLong()),
+        "lastSampleAt" to store.latestTimes().mapValues { it.value.toDouble() },
       )
     }
   }

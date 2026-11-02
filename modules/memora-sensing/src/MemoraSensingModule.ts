@@ -7,7 +7,7 @@ declare class MemoraSensingModule extends NativeModule<MemoraSensingModuleEvents
   // permission is granted. Rejects with ERR_MISSING_PERMISSION otherwise.
   startCapture(): Promise<void>;
   stopCapture(): void;
-  getStatus(): CaptureStatus;
+  getStatus(sinceMs: number): CaptureStatus;
 }
 
 // null on web, iOS, Expo Go, or a development build made before this module

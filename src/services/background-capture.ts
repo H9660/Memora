@@ -3,6 +3,8 @@ import { PermissionsAndroid, Platform } from 'react-native';
 
 import MemoraSensing, { CaptureStatus } from '../../modules/memora-sensing';
 
+export type { CaptureStatus, CaptureStream } from '../../modules/memora-sensing';
+
 // 'needs-rebuild': running in Expo Go or a development build made before the
 // native capture module was added.
 export type CaptureAvailability = 'available' | 'unsupported' | 'needs-rebuild';
@@ -16,8 +18,19 @@ export function getCaptureAvailability(): CaptureAvailability {
   return MemoraSensing ? 'available' : 'needs-rebuild';
 }
 
+// Counts cover today (since local midnight).
 export function getCaptureStatus(): CaptureStatus {
-  return MemoraSensing?.getStatus() ?? { running: false, startedAt: null };
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+
+  return (
+    MemoraSensing?.getStatus(midnight.getTime()) ?? {
+      running: false,
+      startedAt: null,
+      counts: {},
+      lastSampleAt: {},
+    }
+  );
 }
 
 // Call from a button press: Android only lets the capture service start while
