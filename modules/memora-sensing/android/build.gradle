@@ -25,4 +25,8 @@ dependencies {
   implementation "androidx.camera:camera-core:1.6.2"
   implementation "androidx.camera:camera-camera2:1.6.2"
   implementation "androidx.camera:camera-lifecycle:1.6.2"
+  // TensorFlow Lite runtime for the YAMNet sound classifier (~4 MB per ABI;
+  // MediaPipe's audio task would add ~34 MB for the same model). 1.x because
+  // 2.x is built with a newer Kotlin than React Native's.
+  implementation "com.google.ai.edge.litert:litert:1.4.2"
 }

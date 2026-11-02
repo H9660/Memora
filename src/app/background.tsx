@@ -17,6 +17,7 @@ const STREAMS: { stream: CaptureStream; label: string; every: string }[] = [
   { stream: "motion", label: "🚶 Motion", every: "summary every minute" },
   { stream: "battery", label: "🔋 Battery", every: "every 5 min" },
   { stream: "photo", label: "📷 Photos", every: "every 2 min when moving" },
+  { stream: "sound", label: "🔊 Sound labels", every: "every 5 min" },
 ];
 
 function formatAgo(ms: number | undefined): string {
@@ -124,6 +125,12 @@ export default function BackgroundCaptureScreen() {
               </View>
             ))}
 
+            {status.latestSoundLabels.length > 0 && (
+              <Text style={styles.cardHint}>
+                Last heard: {status.latestSoundLabels.join(", ")}
+              </Text>
+            )}
+
             {status.latestPhotoUri && (
               <Image
                 source={{ uri: status.latestPhotoUri }}
@@ -156,8 +163,9 @@ export default function BackgroundCaptureScreen() {
           in the background, even with the screen off, and shows a notification.
           With the camera facing out of your pouch, it takes a photo every 2
           minutes while you move (every 15 while still) and deletes dark ones.
-          Sound labels are coming next. Sound will never be recorded or kept —
-          only labels like “speech” or “traffic”.
+          Every 5 minutes it listens for 3 seconds and keeps only labels like
+          “Speech” or “Traffic noise” and how loud it was — the sound itself is
+          never stored.
         </Text>
         <Text style={styles.cardHint}>
           Stop any time here or from the notification.

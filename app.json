@@ -46,7 +46,7 @@
         {
           "cameraPermission": "Memora lets you attach a photo to a memory. This is optional.",
           "photosPermission": "Memora lets you attach a photo to a memory. This is optional.",
-          "microphonePermission": false
+          "microphonePermission": "During background capture, Memora listens for 3 seconds every few minutes to label the kind of sound around you, such as speech or traffic. The sound itself is never stored."
         }
       ]
     ],

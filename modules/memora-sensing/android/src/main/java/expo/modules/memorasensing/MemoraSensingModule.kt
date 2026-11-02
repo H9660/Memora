@@ -44,8 +44,14 @@ class MemoraSensingModule : Module() {
         "counts" to store.countsSince(sinceMs.toLong()),
         "lastSampleAt" to store.latestTimes().mapValues { it.value.toDouble() },
         "latestPhotoUri" to store.latestPayload("photo")?.optString("uri"),
+        "latestSoundLabels" to latestSoundLabels(store),
       )
     }
+  }
+
+  private fun latestSoundLabels(store: CaptureStore): List<String> {
+    val labels = store.latestPayload("sound")?.optJSONArray("labels") ?: return emptyList()
+    return (0 until labels.length()).map { labels.getJSONObject(it).getString("label") }
   }
 
   private fun hasPermission(permission: String) =

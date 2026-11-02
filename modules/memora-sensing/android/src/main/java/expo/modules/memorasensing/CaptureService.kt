@@ -38,6 +38,7 @@ class CaptureService : LifecycleService() {
   private var location: LocationSampler? = null
   private var battery: BatterySampler? = null
   private var photos: PhotoSampler? = null
+  private var sound: AudioSampler? = null
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
     super.onStartCommand(intent, flags, startId)
@@ -66,18 +67,23 @@ class CaptureService : LifecycleService() {
     return START_NOT_STICKY
   }
 
-  // Android only lets a foreground service use the camera if it was started
-  // with the camera type, which in turn requires the camera permission.
+  // Android only lets a foreground service use the camera or microphone if it
+  // was started with that type, which in turn requires the permission.
   private fun foregroundTypes(): Int {
     var types = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasCameraPermission()) {
-      types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      if (hasPermission(Manifest.permission.CAMERA)) {
+        types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+      }
+      if (hasPermission(Manifest.permission.RECORD_AUDIO)) {
+        types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+      }
     }
     return types
   }
 
-  private fun hasCameraPermission() =
-    ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+  private fun hasPermission(permission: String) =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
   override fun onDestroy() {
     stopSampling()
@@ -114,18 +120,25 @@ class CaptureService : LifecycleService() {
       }
     }
 
-    // CameraX runs on the main thread. Without camera permission, capture
-    // continues without photos.
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasCameraPermission()) {
+    // Photos and sound are optional: without their permission, capture
+    // continues without them. CameraX runs on the main thread.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasPermission(Manifest.permission.CAMERA)) {
       photos = PhotoSampler(this, store) { motion?.lastMinuteMovement }.also { it.start() }
     } else {
       Log.w(TAG, "No camera permission; photos not taken")
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasPermission(Manifest.permission.RECORD_AUDIO)) {
+      sound = AudioSampler(this, store).also { it.start() }
+    } else {
+      Log.w(TAG, "No microphone permission; sound labels not recorded")
     }
   }
 
   private fun stopSampling() {
     photos?.stop()
     photos = null
+    sound?.stop()
+    sound = null
 
     workerHandler?.post {
       motion?.stop()

@@ -30,6 +30,7 @@ export function getCaptureStatus(): CaptureStatus {
       counts: {},
       lastSampleAt: {},
       latestPhotoUri: null,
+      latestSoundLabels: [],
     }
   );
 }
@@ -47,8 +48,9 @@ export async function startCapture(): Promise<void> {
   }
 
   // Optional permissions: capture still runs if they are denied, just without
-  // photos, or with the notification hidden (Android 13+).
+  // photos or sound labels, or with the notification hidden (Android 13+).
   await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.CAMERA);
+  await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
   if (Platform.OS === 'android' && Platform.Version >= 33) {
     await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
